@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Era | Central de Solicitações</title>
+    <style>
+        /* Design VIP Dark Inove */
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #0b0b0b;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .card {
+            background-color: #141414;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.9);
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid #222;
+        }
+
+        .history-card {
+            background-color: #141414;
+            padding: 20px;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 350px;
+            max-height: 550px;
+            border: 1px solid #222;
+            overflow-y: auto;
+        }
+
+        h2, h3 {
+            text-align: center;
+            color: #e50914;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+        }
+
+        .form-group { margin-bottom: 15px; position: relative; }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #999;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background-color: #1a1a1a;
+            color: white;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        input:focus, textarea:focus, select:focus { border-color: #e50914; }
+
+        #sugestoes {
+            position: absolute;
+            width: 100%;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            z-index: 100;
+            max-height: 250px;
+            overflow-y: auto;
+            display: none;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .sugestao-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #222;
+        }
+
+        .sugestao-item:hover { background: #252525; }
+
+        .sugestao-item img { 
+            width: 40px; 
+            height: 60px; 
+            margin-right: 12px; 
+            border-radius: 4px; 
+            object-fit: cover;
+            background: #333;
+        }
+
+        .sugestao-info { display: flex; flex-direction: column; }
+        .sugestao-nome { font-size: 14px; font-weight: bold; }
+        .sugestao-ano { font-size: 12px; color: #777; }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #e50914;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
+
+        button:hover { background-color: #b20710; }
+        #status { text-align: center; margin-top: 15px; font-weight: bold; }
+
+        .history-item {
+            background: #1a1a1a;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #e50914;
+            font-size: 13px;
+        }
+
+        #campoTemporada { display: none; }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #e50914; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Nv.Era Correção/Pedidos</h2>
+    
+    <form id="formInove">
+        <div class="form-group">
+            <label>Tipo de Solicitação:</label>
+            <select id="tipo">
+                <option value="PEDIDO">Novo Pedido 🍿</option>
+                <option value="CORRECAO">Informar Correção ⚠️</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Categoria:</label>
+            <select id="categoria" onchange="toggleTemporada()">
+                <option value="FILME">Filmes</option>
+                <option value="SÉRIE">Séries</option>
+                <option value="CANAIS">Canais</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Seu Usuário do Painel:</label>
+            <input type="text" id="revendedor" placeholder="Digite seu usuario" required>
+        </div>
+
+        <div class="form-group">
+            <label>Título do Conteúdo:</label>
+            <input type="text" id="titulo" placeholder="Busque o nome aqui..." autocomplete="off" required>
+            <div id="sugestoes"></div>
+        </div>
+
+        <div class="form-group" id="campoTemporada">
+            <label>Temporada:</label>
+            <input type="text" id="temporada" placeholder="Ex: 1, 2 ou Todas">
+        </div>
+
+        <div class="form-group">
+            <label id="labelObs">Observação / Motivo:</label>
+            <textarea id="obs" rows="2" placeholder="Dublado, legendado, link off..."></textarea>
+        </div>
+
+        <button type="submit" id="btnEnviar">ENVIAR SOLICITAÇÃO</button>
+        <div id="status"></div>
+    </form>
+</div>
+
+<div class="history-card">
+    <h3>Pedidos Recentes</h3>
+    <div id="listaHistorico"></div>
+</div>
+
+<script>
+    const TMDB_KEY = "fe9f67e134ddc97742f522aace9f85bb"; 
+    const WEBHOOK_PEDIDOS = "https://discord.com/api/webhooks/1499893925522178169/6yc_dtyz1RPcPUj1r8oCquwT5XSGpdIIjEYXJ9zLteLXjoA4eeS4xxPFgoUdjPavKreQ";
+    const WEBHOOK_CORRECOES = "https://discord.com/api/webhooks/1499894028693541044/wbvbuCrAv4Va-_KORO3TU2YOKncSEKAdEoPTclb2a7ULxWw2Bz4sov4GI4piNDaVAj4h";
+
+    const form = document.getElementById('formInove');
+    const inputTitulo = document.getElementById('titulo');
+    const divSugestoes = document.getElementById('sugestoes');
+    const categoriaSelect = document.getElementById('categoria');
+
+    let capaSelecionada = ""; // Variável global para armazenar a URL da imagem
+
+    function toggleTemporada() {
+        const campoTemp = document.getElementById('campoTemporada');
+        campoTemp.style.display = (categoriaSelect.value === "SÉRIE") ? "block" : "none";
+        if (categoriaSelect.value !== "SÉRIE") document.getElementById('temporada').value = "";
+    }
+
+    inputTitulo.addEventListener('input', async () => {
+        const query = inputTitulo.value;
+        const cat = categoriaSelect.value;
+        if (query.length < 3 || cat === "CANAIS") {
+            divSugestoes.style.display = 'none';
+            return;
+        }
+
+        const tipoBusca = cat === "SÉRIE" ? "tv" : "movie";
+        const url = `https://api.themoviedb.org/3/search/${tipoBusca}?api_key=${TMDB_KEY}&query=${encodeURIComponent(query)}&language=pt-BR`;
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            divSugestoes.innerHTML = "";
+            
+            if (data.results?.length > 0) {
+                divSugestoes.style.display = 'block';
+                data.results.slice(0, 5).forEach(item => {
+                    const nome = item.title || item.name;
+                    const ano = (item.release_date || item.first_air_date || "").split("-")[0];
+                    const posterPath = item.poster_path;
+                    const posterUrl = posterPath 
+                        ? `https://image.tmdb.org/t/p/w92${posterPath}` 
+                        : 'https://via.placeholder.com/92x138?text=Sem+Foto';
+
+                    const div = document.createElement('div');
+                    div.className = "sugestao-item";
+                    div.innerHTML = `
+                        <img src="${posterUrl}">
+                        <div class="sugestao-info">
+                            <span class="sugestao-nome">${nome}</span>
+                            <span class="sugestao-ano">${ano}</span>
+                        </div>
+                    `;
+                    div.onclick = () => {
+                        inputTitulo.value = nome;
+                        // Salva a versão de alta qualidade para o Discord
+                        capaSelecionada = posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : "";
+                        divSugestoes.style.display = 'none';
+                    };
+                    divSugestoes.appendChild(div);
+                });
+            }
+        } catch (e) { }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target !== inputTitulo) divSugestoes.style.display = 'none';
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('status');
+        const btn = document.getElementById('btnEnviar');
+        
+        const tipo = document.getElementById('tipo').value;
+        const cat = categoriaSelect.value;
+        const nome = inputTitulo.value;
+        const temporada = document.getElementById('temporada').value;
+        const obs = document.getElementById('obs').value;
+        const rev = document.getElementById('revendedor').value;
+
+        btn.disabled = true;
+        status.innerText = "Enviando...";
+
+        let mensagemFormatada = "";
+
+        if (tipo === "PEDIDO") {
+            if (cat === "SÉRIE") {
+                mensagemFormatada = `*PEDIDO DE ADIÇÃO DE CONTEÚDO*\n\nCATEGORIA : SÉRIE\nNOME : ${nome}\nTEMPORADA: ${temporada || "Não informada"}\nOBS: ${obs || "Sem observações"}\n\nUSUÁRIO QUE PEDIU: ${rev}`;
+            } else {
+                mensagemFormatada = `*PEDIDO DE ADIÇÃO DE CONTEÚDO*\n\nCATEGORIA : ${cat}\nNOME : ${nome}\nOBS: ${obs || "Sem observações"}\n\nUSUÁRIO QUE PEDIU: ${rev}`;
+            }
+        } else {
+            if (cat === "SÉRIE") {
+                mensagemFormatada = `*PEDIDO DE CORREÇÃO*\n\nCATEGORIA : SÉRIE\nNOME : ${nome}\nTEMPORADA: ${temporada || "Não informada"}\nMOTIVO: ${obs || "Sem observações"}\n\nUSUÁRIO QUE PEDIU: ${rev}`;
+            } else {
+                mensagemFormatada = `*PEDIDO DE CORREÇÃO*\n\nCATEGORIA : ${cat}\nNOME : ${nome}\nMOTIVO: ${obs || "Sem observações"}\n\nUSUÁRIO QUE PEDIU: ${rev}`;
+            }
+        }
+
+        const urlFinal = (tipo === "PEDIDO") ? WEBHOOK_PEDIDOS : WEBHOOK_CORRECOES;
+
+        // Montagem do payload com imagem (embed)
+        const payload = {
+            content: mensagemFormatada,
+            embeds: capaSelecionada ? [{
+                image: { url: capaSelecionada }
+            }] : []
+        };
+
+        try {
+            await fetch(urlFinal, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            status.style.color = "#00ff00";
+            status.innerText = "✅ Solicitação enviada!";
+            
+            let hist = JSON.parse(localStorage.getItem('hist_inove')) || [];
+            hist.push({ txt: nome, tipo: tipo, date: new Date().toLocaleString() });
+            localStorage.setItem('hist_inove', JSON.stringify(hist.slice(-8)));
+            
+            form.reset();
+            capaSelecionada = ""; // Limpa a capa após o envio
+            toggleTemporada();
+            renderHist();
+        } catch (err) {
+            status.style.color = "#ff4444";
+            status.innerText = "❌ Erro ao enviar.";
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    function renderHist() {
+        const lista = document.getElementById('listaHistorico');
+        const hist = JSON.parse(localStorage.getItem('hist_inove')) || [];
+        lista.innerHTML = hist.reverse().map(i => `
+            <div class="history-item">
+                <small>${i.tipo}</small><br>
+                <strong>${i.txt}</strong><br>
+                <small style="color:#555">${i.date}</small>
+            </div>
+        `).join('');
+    }
+    renderHist();
+</script>
+
+</body>
+</html>
