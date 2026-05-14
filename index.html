@@ -196,13 +196,15 @@
     const TMDB_KEY = "fe9f67e134ddc97742f522aace9f85bb"; 
     const WEBHOOK_PEDIDOS = "https://discord.com/api/webhooks/1499893925522178169/6yc_dtyz1RPcPUj1r8oCquwT5XSGpdIIjEYXJ9zLteLXjoA4eeS4xxPFgoUdjPavKreQ";
     const WEBHOOK_CORRECOES = "https://discord.com/api/webhooks/1499894028693541044/wbvbuCrAv4Va-_KORO3TU2YOKncSEKAdEoPTclb2a7ULxWw2Bz4sov4GI4piNDaVAj4h";
+    // Nova Webhook Adicionada
+    const WEBHOOK_SECUNDARIA = "https://discord.com/api/webhooks/1504605092534288546/buYgzzsvlEYZiIREwUzqTGNoqxCP3pIYOYfhjEp0Ezwc08zy8wkRavTnDkNqQKzc5kQ4";
 
     const form = document.getElementById('formInove');
     const inputTitulo = document.getElementById('titulo');
     const divSugestoes = document.getElementById('sugestoes');
     const categoriaSelect = document.getElementById('categoria');
 
-    let capaSelecionada = ""; // Variável global para armazenar a URL da imagem
+    let capaSelecionada = ""; 
 
     function toggleTemporada() {
         const campoTemp = document.getElementById('campoTemporada');
@@ -247,7 +249,6 @@
                     `;
                     div.onclick = () => {
                         inputTitulo.value = nome;
-                        // Salva a versão de alta qualidade para o Discord
                         capaSelecionada = posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : "";
                         divSugestoes.style.display = 'none';
                     };
@@ -292,9 +293,8 @@
             }
         }
 
-        const urlFinal = (tipo === "PEDIDO") ? WEBHOOK_PEDIDOS : WEBHOOK_CORRECOES;
+        const urlPrincipal = (tipo === "PEDIDO") ? WEBHOOK_PEDIDOS : WEBHOOK_CORRECOES;
 
-        // Montagem do payload com imagem (embed)
         const payload = {
             content: mensagemFormatada,
             embeds: capaSelecionada ? [{
@@ -303,11 +303,19 @@
         };
 
         try {
-            await fetch(urlFinal, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            // Envia para as duas webhooks simultaneamente
+            await Promise.all([
+                fetch(urlPrincipal, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }),
+                fetch(WEBHOOK_SECUNDARIA, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+            ]);
 
             status.style.color = "#00ff00";
             status.innerText = "✅ Solicitação enviada!";
@@ -317,7 +325,7 @@
             localStorage.setItem('hist_inove', JSON.stringify(hist.slice(-8)));
             
             form.reset();
-            capaSelecionada = ""; // Limpa a capa após o envio
+            capaSelecionada = "";
             toggleTemporada();
             renderHist();
         } catch (err) {
